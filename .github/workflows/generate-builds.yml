@@ -48,7 +48,7 @@ jobs:
         export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
         cmake --no-warn-unused-cli -H. -Bbuild-cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release
         cmake --build build-cmake --config Release --target GenerateSohOtr
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: soh.otr
         path: soh.otr
@@ -81,11 +81,11 @@ jobs:
         mv build-switch/soh/*.nro soh.nro
         mv README.md readme.txt
     - name: Download soh.otr
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: soh.otr
     - name: Upload build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: soh-switch
         path: |
