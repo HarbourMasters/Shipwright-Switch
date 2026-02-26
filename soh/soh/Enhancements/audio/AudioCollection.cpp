@@ -1,8 +1,9 @@
 #include "AudioCollection.h"
 #include "sequence.h"
 #include "sfx.h"
+#include "soh/cvar_prefixes.h"
 #include <vector>
-#include <Utils/StringHelper.h>
+#include <utils/StringHelper.h>
 #include <libultraship/bridge.h>
 #include <libultraship/classes.h>
 #include <soh/OTRGlobals.h>
@@ -10,9 +11,14 @@
 #include <filesystem>
 
 #define SEQUENCE_MAP_ENTRY(sequenceId, label, sfxKey, category, canBeReplaced, canBeUsedAsReplacement) \
-    { sequenceId, { sequenceId, label, sfxKey, category, canBeReplaced, canBeUsedAsReplacement } }
+    {                                                                                                  \
+        sequenceId, {                                                                                  \
+            sequenceId, label, sfxKey, category, canBeReplaced, canBeUsedAsReplacement                 \
+        }                                                                                              \
+    }
 
 AudioCollection::AudioCollection() {
+    // clang-format off
     //                    (originalSequenceId,                  label,                                      sfxKey,                           category,    canBeReplaced, canBeUsedAsReplacement),
     sequenceMap = {
 
@@ -327,7 +333,7 @@ AudioCollection::AudioCollection() {
         //SEQUENCE_MAP_ENTRY(NA_SE_VO_DUMMY_0x88_YOBI,     "NA_SE_VO_DUMMY_0x88_YOBI",            "NA_SE_VO_DUMMY_0x88_YOBI",       SEQ_VOICE, true, false), // ..
         //SEQUENCE_MAP_ENTRY(NA_SE_VO_DUMMY_0x89_YOBI,     "NA_SE_VO_DUMMY_0x89_YOBI",            "NA_SE_VO_DUMMY_0x89_YOBI",       SEQ_VOICE, true, false), // ..
     };
-
+    // clang-format on
 }
 
 std::string AudioCollection::GetCvarKey(std::string sfxKey) {
@@ -353,10 +359,13 @@ void AudioCollection::AddToCollection(char* otrPath, uint16_t seqNum) {
     if (typeString == "fanfare") {
         type = SEQ_FANFARE;
     }
-    SequenceInfo info = {seqNum,
-                         sequenceName,
-                         StringHelper::Replace(StringHelper::Replace(StringHelper::Replace(sequenceName, " ", "_"), "~", "-"),".", ""),
-                         type, false, true};
+    SequenceInfo info = { seqNum,
+                          sequenceName,
+                          StringHelper::Replace(
+                              StringHelper::Replace(StringHelper::Replace(sequenceName, " ", "_"), "~", "-"), ".", ""),
+                          type,
+                          false,
+                          true };
     sequenceMap.emplace(seqNum, info);
 }
 
@@ -365,7 +374,8 @@ uint16_t AudioCollection::GetReplacementSequence(uint16_t seqId) {
     // for Hyrule Field instead. Otherwise, leave it alone, so that without any sfx editor modifications we will
     // play the normal track as usual.
     if (seqId == NA_BGM_FIELD_MORNING) {
-        if (CVarGetInteger(CVAR_AUDIO("ReplacedSequences.NA_BGM_FIELD_LOGIC.value"), NA_BGM_FIELD_LOGIC) != NA_BGM_FIELD_LOGIC) {
+        if (CVarGetInteger(CVAR_AUDIO("ReplacedSequences.NA_BGM_FIELD_LOGIC.value"), NA_BGM_FIELD_LOGIC) !=
+            NA_BGM_FIELD_LOGIC) {
             seqId = NA_BGM_FIELD_LOGIC;
         }
     }
@@ -388,7 +398,7 @@ void AudioCollection::RemoveFromShufflePool(SequenceInfo* seqInfo) {
     excludedSequences.insert(seqInfo);
     includedSequences.erase(seqInfo);
     CVarSetInteger(cvarKey.c_str(), 1);
-    Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesOnNextTick();
+    Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
 }
 
 void AudioCollection::AddToShufflePool(SequenceInfo* seqInfo) {
@@ -396,14 +406,16 @@ void AudioCollection::AddToShufflePool(SequenceInfo* seqInfo) {
     includedSequences.insert(seqInfo);
     excludedSequences.erase(seqInfo);
     CVarClear(cvarKey.c_str());
-    Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesOnNextTick();
+    Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
 }
 
 void AudioCollection::InitializeShufflePool() {
-    if (shufflePoolInitialized) return;
-    
+    if (shufflePoolInitialized)
+        return;
+
     for (auto& [seqId, seqInfo] : sequenceMap) {
-        if (!seqInfo.canBeUsedAsReplacement) continue;
+        if (!seqInfo.canBeUsedAsReplacement)
+            continue;
         const std::string cvarKey = std::string(CVAR_AUDIO("Excluded.")) + seqInfo.sfxKey;
         if (CVarGetInteger(cvarKey.c_str(), 0)) {
             excludedSequences.insert(&seqInfo);
@@ -415,7 +427,7 @@ void AudioCollection::InitializeShufflePool() {
     shufflePoolInitialized = true;
 };
 
-extern "C" void AudioCollection_AddToCollection(char *otrPath, uint16_t seqNum) {
+extern "C" void AudioCollection_AddToCollection(char* otrPath, uint16_t seqNum) {
     AudioCollection::Instance->AddToCollection(otrPath, seqNum);
 }
 

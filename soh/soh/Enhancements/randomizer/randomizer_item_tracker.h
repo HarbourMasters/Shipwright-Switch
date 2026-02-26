@@ -19,10 +19,11 @@ bool HasSong(ItemTrackerItem);
 bool HasQuestItem(ItemTrackerItem);
 bool HasEquipment(ItemTrackerItem);
 
-#define ITEM_TRACKER_ITEM(id, data, drawFunc)     \
-    {                                             \
-        id, #id, #id "_Faded", data, drawFunc     \
-    }
+#define ITEM_TRACKER_ITEM(id, data, drawFunc) \
+    { id, #id, #id "_Faded", data, drawFunc }
+
+#define ITEM_TRACKER_ITEM_CUSTOM(id, name, nameFaded, data, drawFunc) \
+    { id, #name, #nameFaded "_Faded", data, drawFunc }
 
 typedef struct ItemTrackerDungeon {
     uint32_t id;
@@ -34,17 +35,18 @@ class ItemTrackerSettingsWindow : public Ship::GuiWindow {
     using GuiWindow::GuiWindow;
 
   protected:
-    void InitElement() override {};
+    void InitElement() override{};
     void DrawElement() override;
-    void UpdateElement() override {};
+    void UpdateElement() override{};
 };
 
 class ItemTrackerWindow : public Ship::GuiWindow {
   public:
     using GuiWindow::GuiWindow;
+    void Draw() override;
 
-protected:
+  protected:
     void InitElement() override;
     void DrawElement() override;
-    void UpdateElement() override {};
+    void UpdateElement() override{};
 };

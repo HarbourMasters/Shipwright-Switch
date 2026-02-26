@@ -10,6 +10,7 @@
 extern "C" {
 #include "z64.h"
 #include "macros.h"
+#include "soh/cvar_prefixes.h"
 #include "functions.h"
 #include "variables.h"
 #include "textures/message_static/message_static.h"
@@ -18,15 +19,15 @@ extern PlayState* gPlayState;
 
 typedef struct {
     Actor* actor;
-    std::string text; // Original text
+    std::string text;          // Original text
     std::string processedText; // Text filtered for supported font textures
-    const char* tag; // Tag identifier
-    Color_RGBA8 textColor; // Text color override. Global color is used if alpha is 0
-    int16_t height; // Textbox height
-    int16_t width; // Textbox width
-    int16_t yOffset; // Addition Y offset
-    Mtx* mtx; // Allocated Mtx for rendering
-    Vtx* vtx; // Allocated Vtx for rendering
+    const char* tag;           // Tag identifier
+    Color_RGBA8 textColor;     // Text color override. Global color is used if alpha is 0
+    int16_t height;            // Textbox height
+    int16_t width;             // Textbox width
+    int16_t yOffset;           // Addition Y offset
+    Mtx* mtx;                  // Allocated Mtx for rendering
+    Vtx* vtx;                  // Allocated Vtx for rendering
 } NameTag;
 
 static std::vector<NameTag> nameTags;
@@ -68,7 +69,7 @@ void DrawNameTag(PlayState* play, const NameTag* nameTag) {
         return;
     }
 
-    Color_RGBA8 textboxColor = { 0, 0, 0, 80};
+    Color_RGBA8 textboxColor = { 0, 0, 0, 80 };
     Color_RGBA8 textColor = { 255, 255, 255, 255 };
 
     if (CVarGetInteger(CVAR_COSMETIC("HUD.NameTagActorBackground.Changed"), 0)) {
@@ -82,7 +83,7 @@ void DrawNameTag(PlayState* play, const NameTag* nameTag) {
 
     // Prefer the highest between world position and focus position if targetable
     float posY = nameTag->actor->world.pos.y;
-    if (nameTag->actor->flags & ACTOR_FLAG_TARGETABLE) {
+    if (nameTag->actor->flags & ACTOR_FLAG_ATTENTION_ENABLED) {
         posY = std::max(posY, nameTag->actor->focus.pos.y);
     }
 
@@ -91,7 +92,7 @@ void DrawNameTag(PlayState* play, const NameTag* nameTag) {
     // Set position, billboard effect, scale (with mirror mode), then center nametag
     Matrix_Translate(nameTag->actor->world.pos.x, posY, nameTag->actor->world.pos.z, MTXMODE_NEW);
     Matrix_ReplaceRotation(&play->billboardMtxF);
-    Matrix_Scale(scale * (CVarGetInteger("gMirroredWorld", 0) ? -1 : 1), -scale, 1.0f, MTXMODE_APPLY);
+    Matrix_Scale(scale * (CVarGetInteger(CVAR_ENHANCEMENT("MirroredWorld"), 0) ? -1 : 1), -scale, 1.0f, MTXMODE_APPLY);
     Matrix_Translate(-(float)nameTag->width / 2, -nameTag->height, 0, MTXMODE_APPLY);
     Matrix_ToMtx(nameTag->mtx, (char*)__FILE__, __LINE__);
 
@@ -117,8 +118,6 @@ void DrawNameTag(PlayState* play, const NameTag* nameTag) {
     }
 
     for (size_t i = 0, vtxGroup = 0; i < numChar; i++) {
-        uint16_t texIndex = nameTag->processedText[i] - 32;
-
         // A maximum of 64 Vtx can be loaded at once by gSPVertex, or basically 16 characters
         // handle loading groups of 16 chars at a time until there are no more left to load
         if (i % 16 == 0) {
@@ -127,18 +126,16 @@ void DrawNameTag(PlayState* play, const NameTag* nameTag) {
             vtxGroup++;
         }
 
-        if (texIndex != 0 && nameTag->processedText[i] != '\n') {
-            uintptr_t texture = (uintptr_t)Font_FetchCharTexture(texIndex);
-            int16_t vertexStart = 4 * (i % 16);
+        uintptr_t texture = (uintptr_t)Ship_GetCharFontTexture(nameTag->processedText[i]);
+        int16_t vertexStart = 4 * (i % 16);
 
-            // Multi-instruction macro, need to insert all to the dl buffer
-            Gfx charTexture[] = { gsDPLoadTextureBlock_4b(
-                texture, G_IM_FMT_I, FONT_CHAR_TEX_WIDTH, FONT_CHAR_TEX_HEIGHT, 0, G_TX_NOMIRROR | G_TX_CLAMP,
-                G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD) };
-            nameTagDl.insert(nameTagDl.end(), std::begin(charTexture), std::end(charTexture));
+        // Multi-instruction macro, need to insert all to the dl buffer
+        Gfx charTexture[] = { gsDPLoadTextureBlock_4b(texture, G_IM_FMT_I, FONT_CHAR_TEX_WIDTH, FONT_CHAR_TEX_HEIGHT, 0,
+                                                      G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP,
+                                                      G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD) };
+        nameTagDl.insert(nameTagDl.end(), std::begin(charTexture), std::end(charTexture));
 
-            nameTagDl.push_back(gsSP1Quadrangle(vertexStart, vertexStart + 2, vertexStart + 3, vertexStart + 1, 0));
-        }
+        nameTagDl.push_back(gsSP1Quadrangle(vertexStart, vertexStart + 2, vertexStart + 3, vertexStart + 1, 0));
     }
 
     nameTagDl.push_back(gsSPPopMatrix(G_MTX_MODELVIEW));
@@ -198,11 +195,14 @@ extern "C" void NameTag_RegisterForActorWithOptions(Actor* actor, const char* te
     std::string processedText = std::string(Interface_ReplaceSpecialCharacters((char*)text));
 
     // Strip out unsupported characters
-    processedText.erase(std::remove_if(processedText.begin(), processedText.end(), [](const char& c) {
-        // 172 is max supported texture for the in-game font system,
-        // and filter anything less than a space but not the newline or nul characters
-        return c > 172 || (c < ' ' && c != '\n' && c != '\0');
-    }), processedText.end());
+    processedText.erase(std::remove_if(processedText.begin(), processedText.end(),
+                                       [](const char& c) {
+                                           // 172 is max supported texture for the in-game font system,
+                                           // and filter anything less than a space but not the newline or nul
+                                           // characters
+                                           return (unsigned char)c > 172 || (c < ' ' && c != '\n' && c != '\0');
+                                       }),
+                        processedText.end());
 
     int16_t numChar = processedText.length();
     int16_t numLines = 1;
@@ -213,20 +213,15 @@ extern "C" void NameTag_RegisterForActorWithOptions(Actor* actor, const char* te
     Vtx* vertices = (Vtx*)calloc(sizeof(Vtx[4]), numChar + 1);
 
     // Set all the char vtx first to get the total size for the textbox
-    for (size_t i = 0; i < numChar; i++) {
+    for (int16_t i = 0; i < numChar; i++) {
         if (processedText[i] == '\n') {
             offsetX = 0;
             numLines++;
         }
 
-        int16_t charIndex = processedText[i] - 32;
-        int16_t charWidth = 0;
-        // Don't add width for newline chars
-        if (charIndex >= 0) {
-            charWidth = (int16_t)(Message_GetCharacterWidth(charIndex) * (100.0f / R_TEXT_CHAR_SCALE));
-        }
+        int16_t charWidth = (int16_t)(Ship_GetCharFontWidth(processedText[i]));
 
-        Interface_CreateQuadVertexGroup(&(vertices)[(i + 1) * 4], offsetX, (numLines - 1) * 16, charWidth, 16, 0);
+        Ship_CreateQuadVertexGroup(&(vertices)[(i + 1) * 4], offsetX, (numLines - 1) * 16, charWidth, 16, 0);
         offsetX += charWidth;
 
         if (offsetX > maxOffsetX) {
@@ -237,7 +232,7 @@ extern "C" void NameTag_RegisterForActorWithOptions(Actor* actor, const char* te
     // Vtx for textbox, add +/- 4 in all directions
     int16_t height = (numLines * 16) + 8;
     int16_t width = maxOffsetX + 8;
-    Interface_CreateQuadVertexGroup(vertices, -4, -4, width, height, 0);
+    Ship_CreateQuadVertexGroup(vertices, -4, -4, width, height, 0);
 
     // Update the texture coordinates to consume the full textbox texture size (including mirror region)
     vertices[1].v.tc[0] = 256 << 5;

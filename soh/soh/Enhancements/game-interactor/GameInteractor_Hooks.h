@@ -1,11 +1,18 @@
+#pragma once
+
+#include "vanilla-behavior/GIVanillaBehavior.h"
 #include "GameInteractor.h"
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 // MARK: - Gameplay
+void GameInteractor_ExecuteOnZTitleInit(void* gameState);
+void GameInteractor_ExecuteOnZTitleUpdate(void* gameState);
 void GameInteractor_ExecuteOnLoadGame(int32_t fileNum);
 void GameInteractor_ExecuteOnExitGame(int32_t fileNum);
+void GameInteractor_ExecuteOnGameStateMainStart();
 void GameInteractor_ExecuteOnGameFrameUpdate();
 void GameInteractor_ExecuteOnItemReceiveHooks(GetItemEntry itemEntry);
 void GameInteractor_ExecuteOnSaleEndHooks(GetItemEntry itemEntry);
@@ -18,15 +25,24 @@ void GameInteractor_ExecuteOnFlagUnset(int16_t flagType, int16_t flag);
 void GameInteractor_ExecuteOnSceneSpawnActors();
 void GameInteractor_ExecuteOnPlayerUpdate();
 void GameInteractor_ExecuteOnOcarinaSongAction();
+void GameInteractor_ExecuteOnCuccoOrChickenHatch();
 void GameInteractor_ExecuteOnActorInit(void* actor);
 void GameInteractor_ExecuteOnActorUpdate(void* actor);
 void GameInteractor_ExecuteOnActorKill(void* actor);
 void GameInteractor_ExecuteOnEnemyDefeat(void* actor);
+void GameInteractor_ExecuteOnBossDefeat(void* actor);
+void GameInteractor_ExecuteOnTimestamp(u8 item);
 void GameInteractor_ExecuteOnPlayerBonk();
-void GameInteractor_ExecuteOnOcarinaSongAction();
+void GameInteractor_ExecuteOnPlayerHealthChange(int16_t amount);
+void GameInteractor_ExecuteOnPlayerBottleUpdate(int16_t contents);
+void GameInteractor_ExecuteOnPlayerHoldUpShield();
+void GameInteractor_ExecuteOnPlayerFirstPersonControl(Player* player);
+void GameInteractor_ExecuteOnPlayerShieldControl(float_t* sp50, float_t* sp54);
+void GameInteractor_ExecuteOnPlayerProcessStick();
 void GameInteractor_ExecuteOnShopSlotChangeHooks(uint8_t cursorIndex, int16_t price);
 void GameInteractor_ExecuteOnPlayDestroy();
 void GameInteractor_ExecuteOnPlayDrawEnd();
+bool GameInteractor_Should(GIVanillaBehavior flag, uint32_t result, ...);
 
 // MARK: -  Save Files
 void GameInteractor_ExecuteOnSaveFile(int32_t fileNum);
@@ -60,7 +76,7 @@ void GameInteractor_ExecuteOnSetGameLanguage();
 // MARK: - System
 void GameInteractor_RegisterOnAssetAltChange(void (*fn)(void));
 
-//Mark: - Pause Menu
+// Mark: - Pause Menu
 void GameInteractor_ExecuteOnKaleidoUpdate();
 
 #ifdef __cplusplus
